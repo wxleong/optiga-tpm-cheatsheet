@@ -113,6 +113,7 @@ OPTIGA™ TPM 2.0 command reference and code examples.
 
 # Prerequisites
 
+This cheatsheet has been CI tested for compatibility with the following platform and operating system:
 - Platform: x86_64, aarch64
 - OS: Debian (buster, bullseye, bookworm), Ubuntu (18.04, 20.04, 22.04, 24.04)
 
@@ -126,27 +127,27 @@ CI failed on aarch64 with Ubuntu:22.04 image. Unable to launch swtpm, returned e
 
 # Setup on Debian/Ubuntu
 
-Download package information:
+Download the package information:
 ```all
 $ sudo apt update
 ```
 
-Install generic packages:
+Install common packages:
 ```all
 $ sudo apt -y install autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev pandoc acl libglib2.0-dev xxd cmake
 ```
 
-Install platform dependent packages on Ubuntu (18.04, 20.04):
+Install platform specific packages for Ubuntu (18.04 and 20.04):
 ```ubuntu-18.04,ubuntu-20.04
 $ sudo apt -y install python-yaml
 ```
 
-Download this project for later use:
+Clone this project for later use:
 ```exclude
 $ git clone https://github.com/Infineon/optiga-tpm-cheatsheet ~/optiga-tpm-cheatsheet
 ```
 
-Install newer version of libjson-c-dev on Debian (buster), Ubuntu (18.04):
+Install an updated version of `libjson-c-dev` on Debian (buster) and Ubuntu (18.04):
 ```debian-buster,ubuntu-18.04
 $ git clone https://github.com/json-c/json-c ~/json-c
 $ cd ~/json-c
@@ -157,6 +158,11 @@ $ sudo make install
 ```
 
 Install tpm2-tss:
+> For debugging purposes, set the logging level using the TSS2_LOG environment variable. Available log levels are: NONE, ERROR, WARNING, INFO, DEBUG, TRACE.
+>
+> Example: `export TSS2_LOG=all+TRACE`.
+>
+> For more details about logging, refer to the [tpm2-tss logging documentation](https://github.com/tpm2-software/tpm2-tss/blob/master/doc/logging.md).
 ```all
 $ git clone https://github.com/tpm2-software/tpm2-tss ~/tpm2-tss
 $ cd ~/tpm2-tss
@@ -166,10 +172,6 @@ $ ./configure
 $ make -j$(nproc)
 $ sudo make install
 $ sudo ldconfig
-
-# For debugging:
-# Possible levels are: NONE, ERROR, WARNING, INFO, DEBUG, TRACE
-# export TSS2_LOG=all+TRACE
 ```
 
 Install tpm2-tools:
