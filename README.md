@@ -10,7 +10,7 @@ OPTIGA™ TPM 2.0 command reference and code examples.
 - **[Setup on Debian/Ubuntu](#setup-on-debianubuntu)**
 - **[Setup on Raspberry Pi](#setup-on-raspberry-pi)**
 - **[Behaviour of Microsoft TPM2.0 Simulator](#behaviour-of-microsoft-tpm20-simulator)**
-- **[Examples (SAPI/ESAPI)](#examples-sapiesapi)**
+- **[Examples (ESAPI)](#examples-esapi)**
     - **[Audit](#audit)**
     - **[Certify](#certify)**
     - **[Clock & Time](#clock--time)**
@@ -107,12 +107,12 @@ OPTIGA™ TPM 2.0 command reference and code examples.
     - **[Set/Get Certificate](#setget-certificate)**
     - **[Set/Get Description](#setget-description)**
     - **[Signing & Verification](#signing--verification-1)**
-- **[CI Self Test](#ci-self-test)**
-- **[References](#references)**
+- **[GitHub Actions](#github-actions)**
 - **[License](#license)**
 
 # Prerequisites
 
+This cheatsheet has been CI tested for compatibility with the following platform and operating system:
 - Platform: x86_64, aarch64
 - OS: Debian (buster, bullseye, bookworm), Ubuntu (18.04, 20.04, 22.04, 24.04)
 
@@ -126,27 +126,27 @@ CI failed on aarch64 with Ubuntu:22.04 image. Unable to launch swtpm, returned e
 
 # Setup on Debian/Ubuntu
 
-Download package information:
+Download the package information:
 ```all
 $ sudo apt update
 ```
 
-Install generic packages:
+Install common packages:
 ```all
 $ sudo apt -y install autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev pandoc acl libglib2.0-dev xxd cmake
 ```
 
-Install platform dependent packages on Ubuntu (18.04, 20.04):
+Install platform specific packages for Ubuntu (18.04 and 20.04):
 ```ubuntu-18.04,ubuntu-20.04
 $ sudo apt -y install python-yaml
 ```
 
-Download this project for later use:
+Clone this project for later use:
 ```exclude
 $ git clone https://github.com/Infineon/optiga-tpm-cheatsheet ~/optiga-tpm-cheatsheet
 ```
 
-Install newer version of libjson-c-dev on Debian (buster), Ubuntu (18.04):
+Install an updated version of `libjson-c-dev` on Debian (buster) and Ubuntu (18.04):
 ```debian-buster,ubuntu-18.04
 $ git clone https://github.com/json-c/json-c ~/json-c
 $ cd ~/json-c
@@ -157,6 +157,11 @@ $ sudo make install
 ```
 
 Install tpm2-tss:
+> For debugging purposes, set the logging level using the TSS2_LOG environment variable. Available log levels are: NONE, ERROR, WARNING, INFO, DEBUG, TRACE.
+>
+> Example: `export TSS2_LOG=all+TRACE`.
+>
+> For more details about logging, refer to the [tpm2-tss logging documentation](https://github.com/tpm2-software/tpm2-tss/blob/master/doc/logging.md).
 ```all
 $ git clone https://github.com/tpm2-software/tpm2-tss ~/tpm2-tss
 $ cd ~/tpm2-tss
@@ -166,10 +171,6 @@ $ ./configure
 $ make -j$(nproc)
 $ sudo make install
 $ sudo ldconfig
-
-# For debugging:
-# Possible levels are: NONE, ERROR, WARNING, INFO, DEBUG, TRACE
-# export TSS2_LOG=all+TRACE
 ```
 
 Install tpm2-tools:
@@ -196,69 +197,71 @@ $ sudo make install
 $ sudo ldconfig
 ```
 
-Install tpm2-tss-engine on Debian (Bullseye, Buster), Ubuntu (18.04, 20.04):
-```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
-$ git clone https://github.com/tpm2-software/tpm2-tss-engine ~/tpm2-tss-engine
-$ cd ~/tpm2-tss-engine
-$ git checkout v1.1.0
-$ ./bootstrap
-$ ./configure <--- optional: "--enable-debug"
-$ make -j$(nproc)
-$ sudo make install
-$ sudo ldconfig
-```
+Based on the default OpenSSL version provided by the Linux distribution:
+1. To work alongside OpenSSL 1.x, install tpm2-tss-engine on Debian (Bullseye, Buster) or Ubuntu (18.04, 20.04):
+  ```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
+  $ git clone https://github.com/tpm2-software/tpm2-tss-engine ~/tpm2-tss-engine
+  $ cd ~/tpm2-tss-engine
+  $ git checkout v1.1.0
+  $ ./bootstrap
+  $ ./configure <--- optional: "--enable-debug"
+  $ make -j$(nproc)
+  $ sudo make install
+  $ sudo ldconfig
+  ```
+2. To work alongside OpenSSL 3.x, install tpm2-openssl on Debian (Bookworm) or Ubuntu (22.04, 24.04):
+  ```debian-bookworm,ubuntu-22.04,ubuntu-24.04
+  $ git clone https://github.com/tpm2-software/tpm2-openssl ~/tpm2-openssl
+  $ cd ~/tpm2-openssl
+  $ git checkout 1.2.0
+  $ ./bootstrap
+  $ ./configure <--- optional: "--enable-debug"
+  $ make -j$(nproc) <--- "$ make check" to execute self-test. Do not run test in multithreading mode
+  $ sudo make install
+  $ sudo ldconfig
+  ```
 
-Install tpm2-openssl (substitute for tpm2-tss-engine) on Debian (bookworm), Ubuntu (22.04, 24.04):
-```debian-bookworm,ubuntu-22.04,ubuntu-24.04
-$ git clone https://github.com/tpm2-software/tpm2-openssl ~/tpm2-openssl
-$ cd ~/tpm2-openssl
-$ git checkout 1.2.0
-$ ./bootstrap
-$ ./configure <--- optional: "--enable-debug"
-$ make -j$(nproc) <--- "$ make check" to execute self-test. Do not run test in multithreading mode
-$ sudo make install
-$ sudo ldconfig
-```
+Based on the OpenSSL version:
+1. For OpenSSL 1.x:<br>
+  Install the Microsoft TPM 2.0 Simulator on Debian (Bullseye, Buster) or Ubuntu (18.04, 20.04):
+  ```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
+  $ git clone https://github.com/microsoft/ms-tpm-20-ref ~/ms-tpm-20-ref
+  $ cd ~/ms-tpm-20-ref/TPMCmd
+  $ git checkout f74c0d9686625c02b0fdd5b2bbe792a22aa96cb6
+  $ ./bootstrap
+  $ ./configure
+  $ make -j$(nproc)
+  $ sudo make install
+  ```
+2. For OpenSSL 3.x:<br>
+  Install the libtpms-based TPM emulator on Debian (Bookworm) or Ubuntu (22.04, 24.04):
+  > The `--without-seccomp` option is used as a workaround to prevent swtpm failures encountered in Github Actions arm64 Docker containers.
+  > The specific error encountered is: `swtpm: seccomp_load failed with errno 125: Operation canceled`.
+  ```debian-bookworm,ubuntu-22.04,ubuntu-24.04
+  # Install the required dependencies
+  $ sudo apt-get install -y dh-autoreconf libtasn1-6-dev net-tools libgnutls28-dev expect gawk socat libfuse-dev libseccomp-dev make libjson-glib-dev gnutls-bin
 
-Install Microsoft TPM2.0 simulator on Debian (Bullseye, Buster), Ubuntu (18.04, 20.04):
-```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
-$ git clone https://github.com/microsoft/ms-tpm-20-ref ~/ms-tpm-20-ref
-$ cd ~/ms-tpm-20-ref/TPMCmd
-$ git checkout f74c0d9686625c02b0fdd5b2bbe792a22aa96cb6
-$ ./bootstrap
-$ ./configure
-$ make -j$(nproc)
-$ sudo make install
-```
+  # Install libtpms-devel
+  $ git clone https://github.com/stefanberger/libtpms ~/libtpms
+  $ cd ~/libtpms
+  $ git checkout v0.9.6
+  $ ./autogen.sh --with-tpm2 --with-openssl
+  $ make -j$(nproc)
+  $ sudo make install
+  $ sudo ldconfig
 
-Install libtpms-based TPM emulator on Debian (bookworm), Ubuntu (22.04, 24.04):
-> The `--without-seccomp` option is used as a workaround to prevent swtpm failures encountered in Github Actions arm64 Docker containers.
-> The specific error encountered is: `swtpm: seccomp_load failed with errno 125: Operation canceled`.
-```debian-bookworm,ubuntu-22.04,ubuntu-24.04
-# Install dependencies
-$ sudo apt-get install -y dh-autoreconf libtasn1-6-dev net-tools libgnutls28-dev expect gawk socat libfuse-dev libseccomp-dev make libjson-glib-dev gnutls-bin
-
-# Install libtpms-devel
-$ git clone https://github.com/stefanberger/libtpms ~/libtpms
-$ cd ~/libtpms
-$ git checkout v0.9.6
-$ ./autogen.sh --with-tpm2 --with-openssl
-$ make -j$(nproc)
-$ sudo make install
-$ sudo ldconfig
-
-# Install Libtpms-based TPM emulator
-$ git clone https://github.com/stefanberger/swtpm ~/swtpm
-$ cd ~/swtpm
-$ git checkout v0.8.2
-$ ./autogen.sh --with-openssl --without-seccomp --prefix=/usr
-$ make -j$(nproc)
-$ sudo make install
-$ sudo ldconfig
-```
+  # Install Libtpms-based TPM emulator
+  $ git clone https://github.com/stefanberger/swtpm ~/swtpm
+  $ cd ~/swtpm
+  $ git checkout v0.8.2
+  $ ./autogen.sh --with-openssl --without-seccomp --prefix=/usr
+  $ make -j$(nproc)
+  $ sudo make install
+  $ sudo ldconfig
+  ```
 
 Start TPM simulator/emulator:
-1. Start Microsoft TPM2.0 simulator on Debian (Bullseye, Buster), Ubuntu (18.04, 20.04):
+1. Start Microsoft TPM2.0 simulator on Debian (Bullseye, Buster) or Ubuntu (18.04, 20.04):
     ```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
     $ cd /tmp
     $ tpm2-simulator &
@@ -275,7 +278,7 @@ Start TPM simulator/emulator:
     Platform server listening on port 2322
     $ sleep 5
     ```
-    Start Libtpms-based TPM emulator on Debian (bookworm), Ubuntu (22.04, 24.04):
+    Start Libtpms-based TPM emulator on Debian (bookworm) or Ubuntu (22.04, 24.04):
     ```debian-bookworm,ubuntu-22.04,ubuntu-24.04
     $ mkdir /tmp/emulated_tpm
 
@@ -295,32 +298,32 @@ Start TPM simulator/emulator:
     $ sleep 5
     ```
 
-2. Start TPM resource manager on a session dbus instead of system dbus:<br>
-    Start a session dbus which is limited to the current login session:
+2. Start the TPM resource manager using a session D-Bus instead of the system D-Bus:<br>
+    Start a session D-Bus, which is restricted to the current login session:
     ```all
     $ sudo apt install -y dbus
     $ export DBUS_SESSION_BUS_ADDRESS=`dbus-daemon --session --print-address --fork`
     ```
-    Start TPM resource manager on Debian (Bullseye, Buster), Ubuntu (18.04, 20.04):
+    Start the TPM resource manager on Debian (Bullseye, Buster) or Ubuntu (18.04, 20.04):
     ```debian-bullseye,debian-buster,ubuntu-18.04,ubuntu-20.04
     $ tpm2-abrmd --allow-root --session --tcti=mssim &
     $ sleep 5
     ```
-    Start TPM resource manager on Debian (bookworm), Ubuntu (22.04, 24.04):
+    Start the TPM resource manager on Debian (Bookworm) or Ubuntu (22.04, 24.04):
     ```debian-bookworm,ubuntu-22.04,ubuntu-24.04
     $ tpm2-abrmd --allow-root --session --tcti=swtpm:host=127.0.0.1,port=2321 &
     $ sleep 5
     ```
 
-3. Set TCTI:
+3. Set the TCTI environment variables:
     ```all
-    # for tpm2-tools
+    # For tpm2-tools
     $ export TPM2TOOLS_TCTI="tabrmd:bus_name=com.intel.tss2.Tabrmd,bus_type=session"
 
-    # for tpm2-tss-engine (Debian Bullseye, Debian Buster, Ubuntu-18.04, Ubuntu-20.04)
+    # For tpm2-tss-engine (Debian Bullseye, Debian Buster, Ubuntu-18.04, Ubuntu-20.04)
     $ export TPM2TSSENGINE_TCTI="tabrmd:bus_name=com.intel.tss2.Tabrmd,bus_type=session"
 
-    # for tpm2-openssl (Ubuntu-22.04, Ubuntu-24.04)
+    # For tpm2-openssl (Ubuntu-22.04, Ubuntu-24.04)
     $ export TPM2OPENSSL_TCTI="tabrmd:bus_name=com.intel.tss2.Tabrmd,bus_type=session"
     ```
 
@@ -329,52 +332,46 @@ Start TPM simulator/emulator:
     $ tpm2_startup -c
     ```
 
-5. Get random:
+5. Retrieve a random value:
     ```all
     $ tpm2_getrandom --hex 16
     ```
 
 # Setup on Raspberry Pi
 
-<!-- For detailed Raspberry Pi setup guide please visit [[8]](#8). -->
-
-You may explicitly set the TCTI to device node `tpm0` or `tpmrm0`:
+When using a physical TPM on a Linux system, such as a Raspberry Pi, and the TPM driver is successfully enabled, the device nodes `/dev/tpm0` and `/dev/tpmrm0` will be available. To use the physical TPM instead of a TPM simulator, set the TCTI configuration as follows:
 ```exclude
 $ export TPM2TOOLS_TCTI="device:/dev/tpm0"
 $ export TPM2TSSENGINE_TCTI="device:/dev/tpm0"
 ```
 
-Test installation:
-```all
-$ tpm2_getrandom --hex 16
-```
-
 # Behaviour of Microsoft TPM2.0 Simulator
 
-The Microsoft TPM2.0 simulator [[2]](#2) stores all persistent information in a file (`NVChip`). Find the file in the directory where you launched your simulator. If you wish to start fresh, erase the file before launching the simulator.
+The [Microsoft TPM 2.0 simulator](https://github.com/microsoft/ms-tpm-20-ref) stores all persistent information in a file named `NVChip`, located in the directory where the simulator is launched. To start fresh, delete the NVChip file before launching the simulator.
 
-Perform TPM startup after launching the simulator, otherwise, all subsequent commands will fail with the error code 0x100 (TPM not initialized by TPM2_Startup):
+Perform TPM startup after launching the simulator; otherwise, all subsequent commands will fail with error code 0x100 (TPM not initialized by TPM2_Startup):
 ```all
 $ tpm2_startup -c
 ```
 
-When you are not using the TPM resource manager, keep an eye on the TPM transient and session memory:
+If not using the TPM resource manager, monitor the TPM transient and session memory:
 ```all
 $ tpm2_getcap handles-transient
 $ tpm2_getcap handles-loaded-session
 ```
 
-Once it hit 3 handles, the next command may fail with the error code 0x902 (out of memory for object contexts) / 0x903 (out of memory for session contexts). To clear the transient memory:
+If the handle count reaches 3, subsequent commands may fail with the following errors:
+- 0x902: Out of memory for object contexts.
+- 0x903: Out of memory for session contexts.
+To clear transient memory, run:
 ```all
 $ tpm2_flushcontext -t
 $ tpm2_flushcontext -l
 ```
 
-# Examples (SAPI/ESAPI)
+# Examples (ESAPI)
 
-TCG Software Stack 2.0 (TSS 2.0) Specification Structure:
-- TCG TSS 2.0 System API (SAPI) Specification [[14]](#14)
-- TCG TSS 2.0 Enhanced System API (ESAPI) Specification [[15]](#15)
+This section provides examples of using [ESAPI](https://trustedcomputinggroup.org/resource/tcg-tss-2-0-enhanced-system-api-esapi-specification/) layer to access TPM features.
 
 ## Audit
 
@@ -3603,8 +3600,7 @@ $ ./eltt2 -b 8001000000160000017a00000100c000000700000001
 
 # Examples (FAPI)
 
-TCG Software Stack 2.0 (TSS 2.0) Specification Structure:
-- TCG TSS 2.0 Feature API (FAPI) Specification [[16]](#16)
+This section provides examples of using [FAPI](https://trustedcomputinggroup.org/resource/tss-fapi/) layer to access TPM features.
 
 ## Provision
 
@@ -4057,15 +4053,15 @@ $ tss2_delete -p /P_ECCP256SHA256/HS/SRK/LeafKey
 $ rm message message.* key.*
 ```
 
-# CI Self Test
+# GitHub Actions
 
-Manually trigger the CI workflow using the following command:
+GitHub Actions has been set up to automate the testing of this cheat sheet as part of the CI/CD process. The testing methodology involves extracting command lines from the markdown and running them in a Docker container. Please refer to [script.sh](.github/docker/script.sh) to see the preparation of commands for testing. The process occurs seamlessly in the background, utilizing hidden tags in the README.md (visible in raw mode).
 
+For debugging purposes, executed test scripts can be downloaded from the Artifacts of a GitHub Actions run. Alternatively, the CI workflow can be manually triggered using the following command:
 ```exclude
 $ git clone https://github.com/infineon/optiga-tpm-cheatsheet ~/optiga-tpm-cheatsheet
 $ cd ~/optiga-tpm-cheatsheet
 
-# Linux
 $ export DOCKER_IMAGE=debian-bullseye
 $ docker run  --cpus=$(nproc) \
               --memory=7g \
@@ -4090,26 +4086,6 @@ $ docker run  --cpus=%NUMBER_OF_PROCESSORS% ^
               %DOCKER_IMAGE% ^
               /bin/bash -c "/root/optiga-tpm-cheatsheet/.github/docker/script.sh"
 -->
-
-# References
-
-<a id="1">[1] https://www.infineon.com/cms/en/product/security-smart-card-solutions/optiga-embedded-security-solutions/optiga-tpm/</a><br>
-<a id="2">[2] https://github.com/microsoft/ms-tpm-20-ref</a><br>
-<a id="3">[3] https://github.com/tpm2-software/tpm2-tss</a><br>
-<a id="4">[4] https://github.com/tpm2-software/tpm2-tools</a><br>
-<a id="5">[5] https://github.com/tpm2-software/tpm2-tss-engine</a><br>
-<a id="6">[6] https://github.com/Infineon/ek-based-onboarding-optiga-tpm</a><br>
-<a id="7">[7] https://github.com/Infineon/pkcs11-optiga-tpm</a><br>
-<!--<a id="8">[8] https://github.com/wxleong/tpm2-rpi4</a><br>-->
-<a id="9">[9] https://trustedcomputinggroup.org/resource/tpm-library-specification/</a><br>
-<a id="10">[10] https://www.infineon.com/cms/en/product/evaluation-boards/iridium9670-tpm2.0-linux/</a><br>
-<a id="11">[11] https://github.com/tpm2-software/tpm2-tss/blob/master/src/tss2-tcti/tcti-device.c#L371</a><br>
-<a id="12">[12] https://github.com/tpm2-software/tpm2-tools/commit/7b6600d3214dd45531bdb53d5f2510404c31fd6b#diff-b7ca48acb8f12449d165509c68d04600fac53b56bfc4c43462908815b9602def</a><br>
-<a id="13">[13] https://github.com/Infineon/remote-attestation-optiga-tpm</a><br>
-<a id="14">[14] https://trustedcomputinggroup.org/resource/tcg-tss-2-0-system-level-api-sapi-specification/</a><br>
-<a id="15">[15] https://trustedcomputinggroup.org/resource/tcg-tss-2-0-enhanced-system-api-esapi-specification/</a><br>
-<a id="16">[16] https://trustedcomputinggroup.org/resource/tss-fapi/</a><br>
-<a id="17">[17] https://github.com/Infineon/eltt2</a><br>
 
 # License
 
